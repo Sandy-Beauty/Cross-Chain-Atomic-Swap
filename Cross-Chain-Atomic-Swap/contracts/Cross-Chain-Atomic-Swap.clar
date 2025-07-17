@@ -83,3 +83,44 @@
   }
 )
 
+;; Tracks participants in mixing pools
+(define-map mixer-participants
+  { pool-id: (buff 32), participant-id: uint }
+  {
+    participant: principal,
+    amount: uint,
+    blinded-output-address: (buff 64),
+    joined-height: uint,
+    withdrawn: bool
+  }
+)
+
+;; Protocol admin for governance
+(define-data-var contract-admin principal tx-sender)
+
+;; Fee accumulator for protocol fees
+(define-data-var protocol-fee-balance uint u0)
+
+;; Contract version
+(define-data-var contract-version (string-ascii 20) "1.0.0")
+
+;; Verify a HTLC hash matches the preimage
+(define-private (verify-hash (preimage (buff 32)) (hash-lock (buff 32)))
+  (is-eq (sha256 preimage) hash-lock)
+)
+
+
+;; Check if current block height is within timelock constraints
+(define-private (is-timelock-valid (time-lock uint))
+  (let ((current-height stacks-block-height))
+    (< current-height time-lock)
+  )
+)
+
+;; Check if a swap has expired
+(define-private (is-swap-expired (expiration-height uint))
+  (let ((current-height stacks-block-height))
+    (>= current-height expiration-height)
+  )
+)
+
