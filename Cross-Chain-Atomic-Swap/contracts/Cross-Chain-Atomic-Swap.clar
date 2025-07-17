@@ -336,3 +336,78 @@
     (ok true)
   )
 )
+
+;; Activate a mixing pool when threshold is reached
+(define-public (activate-mixing-pool (pool-id (buff 32)))
+  (let (
+    (pool (unwrap! (map-get? mixing-pools { pool-id: pool-id }) (err ERR-MIXER-NOT-FOUND)))
+    (current-height stacks-block-height)
+  )
+    ;; Check if activation requirements are met
+    (asserts! (>= (get participant-count pool) (get activation-threshold pool)) (err ERR-NOT-CLAIMABLE))
+    (asserts! (not (get active pool)) (err ERR-ALREADY-CLAIMED))
+    
+    ;; Update pool to active status
+    (map-set mixing-pools
+      { pool-id: pool-id }
+      (merge pool { active: true })
+    )
+    
+    ;; Return success
+    (ok true)
+  )
+)
+
+;; Extract fees accumulated by the protocol
+(define-public (extract-protocol-fees (recipient principal))
+  (let (
+    (admin (var-get contract-admin))
+    (fee-balance (var-get protocol-fee-balance))
+  )
+    ;; Only contract admin can extract fees
+    (asserts! (is-eq tx-sender admin) (err ERR-UNAUTHORIZED))
+    (asserts! (> fee-balance u0) (err ERR-INSUFFICIENT-FUNDS))
+    
+    ;; Reset fee balance
+    (var-set protocol-fee-balance u0)
+    
+    ;; Return success and balance
+    (ok fee-balance)
+  )
+)
+
+;; Change contract admin
+(define-public (set-contract-admin (new-admin principal))
+  (let (
+    (admin (var-get contract-admin))
+  )
+    ;; Only current admin can change admin
+    (asserts! (is-eq tx-sender admin) (err ERR-UNAUTHORIZED))
+    
+    ;; Set new admin
+    (var-set contract-admin new-admin)
+    
+    ;; Return success
+    (ok true)
+  )
+)
+
+;; Get swap details by ID
+(define-read-only (get-swap-details (swap-id (buff 32)))
+  (map-get? swaps { swap-id: swap-id })
+)
+
+;; Get proof verification status
+(define-read-only (get-proof-status (swap-id (buff 32)))
+  (map-get? confidential-proofs { swap-id: swap-id })
+)
+
+;; Get mixing pool details
+(define-read-only (get-mixing-pool-details (pool-id (buff 32)))
+  (map-get? mixing-pools { pool-id: pool-id })
+)
+
+;; Get multi-sig approval status
+(define-read-only (get-multi-sig-approval (swap-id (buff 32)) (signer principal))
+  (map-get? multi-sig-approvals { swap-id: swap-id, signer: signer })
+)
